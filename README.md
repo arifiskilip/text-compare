@@ -24,6 +24,8 @@ Tarayıcı otomatik açılmazsa adresi kendiniz açın. Kıyas zaten çalışıy
 
 ## Klavye kısayolları
 
+Sol menü sol üstteki düğmeyle açılıp kapanır; masaüstündeki tercihin ve değişiklik listesinin açık/kapalı durumu hatırlanır. Menü başlangıçta kapalıdır. Odak modu yan menüyü, alt listeyi ve durum çubuğunu gizleyerek metin alanını büyütür; aynı düğmeyle normal düzene dönebilirsin.
+
 | Kısayol | İşlev |
 | --- | --- |
 | `Alt + ↓` veya `F7` | Sonraki değişikliğe git |
@@ -34,6 +36,8 @@ Tarayıcı otomatik açılmazsa adresi kendiniz açın. Kıyas zaten çalışıy
 | `Ctrl + S` | Etkin metni dosyaya indir; seçim yoksa sağ metni kullanır |
 | `Ctrl + F` | Odaktaki editörde ara |
 | `Ctrl + Z` | Odaktaki editörde geri al |
+| `Ctrl + B` | Sol menüyü aç / kapat |
+| `Alt + Enter` | Odak modunu aç / kapat |
 
 Editördeki normal ok tuşları metin imlecini hareket ettirir. Yazarken değişikliklere atlamak için `Alt` ile ok tuşlarını veya `F7` kısayollarını kullanın.
 

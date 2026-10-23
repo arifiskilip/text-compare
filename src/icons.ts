@@ -1,5 +1,9 @@
 const paths: Record<string, string> = {
   compare: '<path d="M4 7h16m-5-5 5 5-5 5M20 17H4m5-5-5 5 5 5"/>',
+  'panel-open': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m4-11 3 3-3 3"/>',
+  'panel-close': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m7-11-3 3 3 3"/>',
+  maximize: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
+  minimize: '<path d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/>',
   columns: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
   rows: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>',
   layers: '<path d="m12 3 10 6-10 6L2 9l10-6Zm-9 11 9 5 9-5M3 18l9 5 9-5"/>',

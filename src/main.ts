@@ -37,6 +37,9 @@ let draftTimer: ReturnType<typeof setTimeout>;
 let dirty = false;
 let changingWorkspace = false;
 let storageErrorShown = false;
+let focusMode = false;
+let mobileSidebarOpen = false;
+const mobileLayout = window.matchMedia('(max-width: 1000px)');
 let selectedDecorations: monaco.editor.IEditorDecorationsCollection[] = [];
 const maxFileBytes = 8 * 1024 * 1024;
 const modal = $<HTMLDialogElement>('modal');
@@ -87,12 +90,12 @@ const diffEditor = monaco.editor.createDiffEditor($('diff-editor'), {
   renderMarginRevertIcon: false, renderGutterMenu: false,
   maxComputationTime: 10000, maxFileSize: 16,
   fontFamily: "'Cascadia Code', Consolas, 'Courier New', monospace", fontSize: settings.fontSize,
-  lineHeight: 23, fontLigatures: false, minimap: { enabled: false },
-  padding: { top: 18, bottom: 18 }, scrollBeyondLastLine: false,
+  lineHeight: 21, fontLigatures: false, minimap: { enabled: false },
+  padding: { top: 8, bottom: 8 }, scrollBeyondLastLine: false,
   wordWrap: settings.wordWrap ? 'on' : 'off', diffWordWrap: settings.wordWrap ? 'on' : 'off',
   smoothScrolling: true, cursorSmoothCaretAnimation: 'off',
   bracketPairColorization: { enabled: false }, renderWhitespace: 'selection',
-  folding: true, lineNumbersMinChars: 4, glyphMargin: false,
+  folding: true, lineNumbersMinChars: 3, glyphMargin: false,
   overviewRulerBorder: false, renderOverviewRuler: true,
   unicodeHighlight: { ambiguousCharacters: false },
   accessibilitySupport: 'auto', originalAriaLabel: 'Orijinal metin, sol editör', modifiedAriaLabel: 'Değiştirilmiş metin, sağ editör',
@@ -215,6 +218,49 @@ diffEditor.onDidUpdateDiff(() => {
   renderChanges();
 });
 
+function persistSettings() {
+  const result = repository.saveSettings(settings);
+  if (!result.ok) toast(result.error, true);
+}
+function applyLayout() {
+  const collapsed = focusMode || (mobileLayout.matches ? !mobileSidebarOpen : settings.sidebarCollapsed);
+  const sidebar = $('app-sidebar');
+  const focusWasInSidebar = sidebar.contains(document.activeElement);
+  const drawerOpen = mobileLayout.matches && !collapsed;
+  $('app-shell').classList.toggle('sidebar-collapsed', collapsed);
+  $('app-shell').classList.toggle('focus-mode', focusMode);
+  sidebar.hidden = collapsed;
+  $('sidebar-backdrop').hidden = !drawerOpen;
+  $('main-content').inert = drawerOpen;
+  $('sidebar-toggle').setAttribute('aria-expanded', String(!collapsed));
+  $('sidebar-toggle').setAttribute('aria-label', collapsed ? 'Menüyü aç' : 'Menüyü kapat');
+  $('sidebar-toggle').title = `${collapsed ? 'Menüyü aç' : 'Menüyü kapat'} (Ctrl+B)`;
+  $('sidebar-toggle').innerHTML = icon(collapsed ? 'panel-open' : 'panel-close');
+  $('focus-mode').setAttribute('aria-pressed', String(focusMode));
+  $('focus-mode').setAttribute('aria-label', focusMode ? 'Odak modundan çık' : 'Odak modu');
+  $('focus-mode').title = `${focusMode ? 'Odak modundan çık' : 'Odak modu'} (Alt+Enter)`;
+  $('focus-mode').innerHTML = icon(focusMode ? 'minimize' : 'maximize');
+  $('change-list').hidden = !settings.changesExpanded;
+  $('toggle-changes').setAttribute('aria-expanded', String(settings.changesExpanded));
+  $('change-tray').classList.toggle('collapsed', !settings.changesExpanded);
+  if (collapsed && focusWasInSidebar) $('sidebar-toggle').focus();
+  requestAnimationFrame(() => diffEditor.layout());
+}
+function setSidebarOpen(open: boolean) {
+  if (open) focusMode = false;
+  if (mobileLayout.matches) mobileSidebarOpen = open;
+  else settings.sidebarCollapsed = !open;
+  applyLayout();
+  if (!mobileLayout.matches) persistSettings();
+  if (open && mobileLayout.matches) $('close-sidebar').focus();
+}
+function toggleFocusMode() {
+  focusMode = !focusMode;
+  mobileSidebarOpen = false;
+  applyLayout();
+}
+mobileLayout.addEventListener('change', () => { mobileSidebarOpen = false; applyLayout(); });
+
 function applySettings(persist = true) {
   document.documentElement.dataset.theme = settings.theme;
   monaco.editor.setTheme(`kiyas-${settings.theme}`);
@@ -236,7 +282,8 @@ function applySettings(persist = true) {
   }
   $('theme-toggle').innerHTML = icon(settings.theme === 'dark' ? 'sun' : 'moon');
   $('theme-toggle').setAttribute('aria-label', settings.theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç');
-  if (persist) { const result = repository.saveSettings(settings); if (!result.ok) toast(result.error, true); }
+  applyLayout();
+  if (persist) persistSettings();
 }
 function setLanguage(language: string) {
   if (!Array.from($<HTMLSelectElement>('language-select').options).some(option => option.value === language)) language = 'plaintext';
@@ -327,7 +374,7 @@ function showSessions() {
   $('save-from-library').onclick = showSaveModal;
 }
 function showShortcuts() {
-  const shortcuts = [ ['Alt + ↓', 'Sonraki değişiklik'], ['Alt + ↑', 'Önceki değişiklik'], ['F7 / Shift + F7', 'Sonraki / önceki değişiklik'], ['↓ / ↑', 'Editör dışında farklar arasında gezin'], ['Ctrl + F', 'Odaktaki metinde ara'], ['Ctrl + H', 'Odaktaki metinde bul ve değiştir'], ['Ctrl + Z / Ctrl + Y', 'Geri al / yinele'], ['Ctrl + S', 'Odaktaki metni dosya olarak indir'], ['Ctrl + Alt + S', 'Çalışmayı kaydet'], ['Alt + N', 'Yeni karşılaştırma'], ['Ctrl + + / −', 'Editör yazısını büyüt / küçült'] ];
+  const shortcuts = [ ['Alt + ↓', 'Sonraki değişiklik'], ['Alt + ↑', 'Önceki değişiklik'], ['F7 / Shift + F7', 'Sonraki / önceki değişiklik'], ['↓ / ↑', 'Editör dışında farklar arasında gezin'], ['Ctrl + B', 'Sol menüyü aç / kapat'], ['Alt + Enter', 'Odak modunu aç / kapat'], ['Ctrl + F', 'Odaktaki metinde ara'], ['Ctrl + H', 'Odaktaki metinde bul ve değiştir'], ['Ctrl + Z / Ctrl + Y', 'Geri al / yinele'], ['Ctrl + S', 'Odaktaki metni dosya olarak indir'], ['Ctrl + Alt + S', 'Çalışmayı kaydet'], ['Alt + N', 'Yeni karşılaştırma'], ['Ctrl + + / −', 'Editör yazısını büyüt / küçült'] ];
   openModal('Klavyeyle daha hızlı', `<p class="modal-description">Metin yazarken normal ok tuşları imleci hareket ettirir. Farklara atlamak için Alt + ok tuşlarını kullan.</p><div class="shortcut-list">${shortcuts.map(([keys, description]) => `<div class="shortcut-row"><span>${description}</span><kbd>${keys}</kbd></div>`).join('')}</div><p class="modal-note">İpucu: Dosyaları doğrudan sol veya sağ editörün üzerine sürükleyebilirsin. İki dosyayı birlikte bırakırsan her biri bir tarafa açılır.</p>`, 'KISAYOLLAR & İPUÇLARI');
 }
 function showSettings() {
@@ -414,6 +461,13 @@ function merge(direction: 'left' | 'right') {
 }
 
 $('previous-change').onclick = () => goToChange(-1);
+$('sidebar-toggle').onclick = () => setSidebarOpen($('app-sidebar').hidden);
+$('close-sidebar').onclick = () => setSidebarOpen(false);
+$('sidebar-backdrop').onclick = () => setSidebarOpen(false);
+$('focus-mode').onclick = toggleFocusMode;
+$('app-sidebar').addEventListener('click', event => {
+  if (mobileLayout.matches && (event.target as HTMLElement).closest('button, a')) setSidebarOpen(false);
+}, { capture: true });
 $('next-change').onclick = () => goToChange(1);
 $('merge-left').onclick = () => merge('left');
 $('merge-right').onclick = () => merge('right');
@@ -436,7 +490,7 @@ $('hide-unchanged').onclick = () => { settings.hideUnchanged = !settings.hideUnc
 $('language-select').onchange = event => { setLanguage((event.target as HTMLSelectElement).value); markDirty(); };
 $('change-list').onclick = event => { const item = (event.target as HTMLElement).closest<HTMLElement>('[data-change]'); if (item) { currentChange = Number(item.dataset.change); renderSelection(true); } };
 $('recent-sessions').onclick = event => { const item = (event.target as HTMLElement).closest<HTMLElement>('[data-session]'); if (item) openSaved(item.dataset.session!); };
-$('toggle-changes').onclick = () => { const list = $('change-list'); list.hidden = !list.hidden; $('toggle-changes').setAttribute('aria-expanded', String(!list.hidden)); $('change-tray').classList.toggle('collapsed', list.hidden); };
+$('toggle-changes').onclick = () => { settings.changesExpanded = !settings.changesExpanded; applyLayout(); persistSettings(); };
 $('export-button').onclick = () => { const menu = $('export-menu'); menu.hidden = !menu.hidden; $('export-button').setAttribute('aria-expanded', String(!menu.hidden)); };
 document.addEventListener('click', event => { if (!(event.target as HTMLElement).closest('.dropdown')) { $('export-menu').hidden = true; $('export-button').setAttribute('aria-expanded', 'false'); } });
 document.querySelectorAll<HTMLElement>('[data-export]').forEach(button => button.onclick = () => exportData(button.dataset.export!));
@@ -489,6 +543,23 @@ for (const [side, editor] of [['original', diffEditor.getOriginalEditor()], ['mo
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') { $('export-menu').hidden = true; $('export-button').setAttribute('aria-expanded', 'false'); }
   if (modal.open) return;
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'b') {
+    event.preventDefault(); event.stopPropagation(); setSidebarOpen($('app-sidebar').hidden); return;
+  }
+  if (mobileLayout.matches && mobileSidebarOpen) {
+    if (event.key === 'Escape') { event.preventDefault(); setSidebarOpen(false); }
+    if (event.key === 'Tab') {
+      const focusable = Array.from($('app-sidebar').querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, [tabindex="0"]')).filter(element => element.getClientRects().length);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+    return;
+  }
+  if (event.altKey && event.key === 'Enter') {
+    event.preventDefault(); event.stopPropagation(); toggleFocusMode(); return;
+  }
   const target = event.target as HTMLElement;
   const typing = target.matches('input, textarea, select, [contenteditable="true"]') || !!target.closest('.monaco-editor');
   if ((event.altKey && ['ArrowDown', 'ArrowUp'].includes(event.key)) || event.key === 'F7' || (!typing && !event.ctrlKey && !event.metaKey && ['ArrowDown', 'ArrowUp'].includes(event.key))) {

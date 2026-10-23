@@ -17,6 +17,8 @@ export interface Settings {
   ignoreWhitespace: boolean;
   hideUnchanged: boolean;
   renderSideBySide: boolean;
+  sidebarCollapsed: boolean;
+  changesExpanded: boolean;
 }
 
 export interface StorageLike {
@@ -44,6 +46,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   ignoreWhitespace: false,
   hideUnchanged: false,
   renderSideBySide: true,
+  sidebarCollapsed: true,
+  changesExpanded: false,
 });
 
 const success = <T>(data: T): StorageResult<T> => ({ ok: true, data });
@@ -111,7 +115,7 @@ function parseSettings(value: unknown): Settings {
   if (typeof source.fontSize === 'number' && Number.isFinite(source.fontSize)) {
     result.fontSize = Math.min(24, Math.max(11, Math.round(source.fontSize)));
   }
-  for (const key of ['wordWrap', 'ignoreWhitespace', 'hideUnchanged', 'renderSideBySide'] as const) {
+  for (const key of ['wordWrap', 'ignoreWhitespace', 'hideUnchanged', 'renderSideBySide', 'sidebarCollapsed', 'changesExpanded'] as const) {
     if (typeof source[key] === 'boolean') result[key] = source[key];
   }
   return result;
